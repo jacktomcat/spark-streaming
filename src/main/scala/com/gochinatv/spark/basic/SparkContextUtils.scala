@@ -12,7 +12,9 @@ object SparkContextUtils {
     val sparkConf = new SparkConf().setAppName("Test").setMaster("local[*]")
     val sparkContext = new SparkContext(sparkConf)
 
-    val textRdd = sparkContext.textFile("/Users/zhuhuihui/ruby-works/validate.rb")
+    val textRdd = sparkContext.textFile("/user/admin/streaming/jack.txt")
+    val map = textRdd.map(line=>(line,line.length))
+    val lineRdd = textRdd.flatMap(line=>line.split(" "))
 
     val arraySeq = Array(100,200,101,201,200)
     val arrayRdd = sparkContext.parallelize(arraySeq)
