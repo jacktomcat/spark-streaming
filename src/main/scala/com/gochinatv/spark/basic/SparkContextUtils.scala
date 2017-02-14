@@ -10,15 +10,23 @@ object SparkContextUtils {
 
   def main(args: Array[String]) {
     val sparkConf = new SparkConf().setAppName("Test").setMaster("local[*]")
-    val sparkContext = new SparkContext(sparkConf)
+    val sc = new SparkContext(sparkConf)
 
-    val textRdd = sparkContext.textFile("/user/admin/streaming/jack.txt")
+    val textRdd = sc.textFile("/user/admin/streaming/jack.txt")
     val map = textRdd.map(line=>(line,line.length))
     val lineRdd = textRdd.flatMap(line=>line.split(" "))
 
     val arraySeq = Array(100,200,101,201,200)
-    val arrayRdd = sparkContext.parallelize(arraySeq)
-    val listRdd = sparkContext.makeRDD(List(100,500,300,400))
+    val arrayRdd = sc.parallelize(arraySeq)
+    val listRdd = sc.makeRDD(List(100,500,300,400))
+
+    val fm = sc.parallelize(Array(100,2000,300),2).flatMap(i=> List(i-1,i,i+1));
+    println(fm.toDebugString+"======")
+    //(2) MapPartitionsRDD[7] at flatMap at SparkContextUtils.scala:23 []
+    //|  ParallelCollectionRDD[6] at parallelize at SparkContextUtils.scala:23 []======
+    //foreach(x=> println("======"+x))
+
+    //println("-----------"+fm.collect().mkString)
 
     val count = arrayRdd.count()
     val max = arrayRdd.max()
@@ -33,7 +41,7 @@ object SparkContextUtils {
     println("count="+count)
 
     array.foreach(x=> println(x))
-    println("=========================")
+    println("=====>>>>>>>>>>>======")
     arrayRdd.distinct().collect().foreach(x=>println("distinct= " + x))
 
     arrayRdd.union(listRdd).distinct().sortBy(x=>x+1,false).collect().foreach(x=>println("sort,distinct= " + x))
