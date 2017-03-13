@@ -11,11 +11,11 @@ object StreamingTextFileStreaming {
 
 
   def main(args: Array[String]) {
-    val sparkConf = new SparkConf().setAppName("StreamingSocketText").setMaster("local[*]")
+    val sparkConf = new SparkConf().setAppName("StreamingTextFileStreaming")//.setMaster("local[*]")
     val streamingContext = new StreamingContext(sparkConf, Seconds(10))
 
     //file,hdfs
-    val textDstream = streamingContext.textFileStream("/Users/zhuhuihui/test")
+    val textDstream = streamingContext.textFileStream("hdfs://slave04:8020/user/admin/streaming")
     textDstream.flatMap(line=>line.split(" ")).map(world=>(world,1)).reduceByKey((a,b)=>a+b).print()
 
     streamingContext.start()
