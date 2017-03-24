@@ -17,19 +17,13 @@ object SparkContextUtils {
     val sparkConf = new SparkConf().setAppName("Test").setMaster("local[*]")
     val sc = new SparkContext(sparkConf)
 
-<<<<<<< HEAD
-    val textRdd = sc.textFile("/Users/zhuhuihui/ruby-works/validate.rb")
-=======
     val textRdd = sc.textFile("/user/admin/streaming/jack.txt")
     val map = textRdd.map(line=>(line,line.length))
     val lineRdd = textRdd.flatMap(line=>line.split(" "))
->>>>>>> 68692f746bb2fbab3adb6947c51ea27aec696c64
 
     val arraySeq = Array(100,200,101,201,200)
     val arrayRdd = sc.parallelize(arraySeq)
     val listRdd = sc.makeRDD(List(100,500,300,400))
-<<<<<<< HEAD
-=======
 
     val fm = sc.parallelize(Array(100,2000,300),2).flatMap(i=> List(i-1,i,i+1));
     println(fm.toDebugString+"======")
@@ -38,7 +32,6 @@ object SparkContextUtils {
     //foreach(x=> println("======"+x))
 
     //println("-----------"+fm.collect().mkString)
->>>>>>> 68692f746bb2fbab3adb6947c51ea27aec696c64
 
     val count = arrayRdd.count()
     val max = arrayRdd.max()
