@@ -18,9 +18,11 @@ object StreamingKafka {
 
     //收到消息格式 (key237,{"id":"236","ts":"2017-03-24 17:34:29","count":"9","value":"39","agreeid":"323"})
     val inputStream = KafkaUtils.createStream(ssc,"localhost:2181","streaming-g01", Map[String, Int]("streaming-click" -> 1))
-    inputStream.print()
+    val ds_value = inputStream.map(msg=>msg._2)
+    val flatmap = inputStream.flatMap(msg=> (msg._2,msg._1))
+    //ds_value.
 
-
+    //inputStream.print()
     //KafkaUtils.createDirectStream()
 
     ssc.start()
