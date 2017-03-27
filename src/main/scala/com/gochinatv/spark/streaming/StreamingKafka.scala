@@ -19,7 +19,7 @@ object StreamingKafka {
     val ssc = new StreamingContext(sparkConf, Seconds(10))
 
     //收到消息格式 (key237,{"id":"236","ts":"2017-03-24 17:34:29","count":"9","value":"39","agreeid":"323"})
-    val inputStream = KafkaUtils.createStream(ssc,"localhost:2181","streaming-g01", Map[String, Int]("streaming-click" -> 1))
+    val inputStream = KafkaUtils.createStream(ssc,"192.168.2.150:2181","streaming-g01", Map[String, Int]("streaming-click" -> 1))
     val ds_value = inputStream.map(msg=>msg._2)
 
     //注意下面的写法是从DStream转换为 PairDStreamFunctions 可以使用高级的功能
@@ -37,6 +37,9 @@ object StreamingKafka {
       }
     })
 
+
+    val countByWindow =  filter_value.countByWindow(Seconds(3),Seconds(2))
+    countByWindow.print()
 
     //filter_value.countByValueAndWindow()
     //filter_value.countByWindow()
