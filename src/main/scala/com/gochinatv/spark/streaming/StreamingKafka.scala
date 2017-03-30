@@ -74,6 +74,9 @@ object StreamingKafka {
     })*/
 
 
+    val countByWindow =  filter_value.countByWindow(Seconds(3),Seconds(2))
+    countByWindow.print()
+
     //filter_value.countByValueAndWindow()
     //filter_value.countByWindow()
     //filter_value.reduceByWindow()
