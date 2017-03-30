@@ -56,7 +56,7 @@ object StreamingKafka {
       rdd=>
       {
         rdd.toDF().registerTempTable("click_data")
-        val df = sqlContext.sql("select agreeid,ts,sum(count),sum(value) from click_data group by agreeid,ts")
+        val df = sqlContext.sql("select agreeid,ts,sum(count),sum(value) from click_data group by agreeid,ts ")
         df.rdd
       }
     )
