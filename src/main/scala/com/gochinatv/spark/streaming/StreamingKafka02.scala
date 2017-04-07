@@ -1,6 +1,6 @@
 package com.gochinatv.spark.streaming
 
-import org.apache.spark.SparkConf
+import org.apache.spark.{HashPartitioner, SparkConf}
 import org.apache.spark.sql.SQLContext
 import org.apache.spark.streaming.{Seconds, StreamingContext}
 import org.apache.spark.streaming.kafka.KafkaUtils
@@ -18,7 +18,7 @@ object StreamingKafka02 {
     val topic_group = "streaming-g01"
     val sparkConf = new SparkConf().setAppName("StreamingKafka02").setMaster("local[*]")
     val ssc = new StreamingContext(sparkConf, Seconds(10))
-    ssc.checkpoint("E:\\checkpoint")
+    //ssc.checkpoint("E:\\checkpoint")
 
     val sqlContext = new SQLContext(ssc.sparkContext)
 
@@ -26,7 +26,7 @@ object StreamingKafka02 {
     val inputStream = KafkaUtils.createStream(ssc,"localhost:2181", topic_group, Map[String, Int](topic -> 1))
     val ds_value = inputStream.map(_._2).map(JSON.parseFull(_)).map(_.get.asInstanceOf[scala.collection.immutable.Map[String, String]])
 
-    val distinctDStream = ds_value.filter(msg => msg.get("count").get.toInt>2).map(kv =>{
+    val distinctDStream = ds_value.filter(msg => msg.get("count").get.toInt>0).map(kv =>{
       val map = Map(
         "id" -> kv.get("id").get,
         "ts" -> kv.get("ts").get.substring(0,16),
@@ -44,23 +44,19 @@ object StreamingKafka02 {
       Map(count -> 4, ts -> 2017-03-30 17:21, agreeId -> 2, id -> 100, value -> 4)*/
     })
 
-    /*val updateFunc = (currentVal: Seq[Map[String,Any]], prevVal: Option[Map[String,Any]]) =>{
-        currentVal.toList.foreach(data => {
-          val prev = prevVal.getOrElse(Map("count" -> "0","value" -> "0"))
-          val count = data.get("count").get.toString.toInt + prev.get("count").get.toString.toInt
-          val value = data.get("value").get.toString.toInt + prev.get("value").get.toString.toInt
-          val result = Map(
-            "agreeId" -> data.get("agreeId").get.toString,
-            "ts" -> data.get("ts").get.toString,
-            "count" -> count,
-            "value" -> value
-          )
-          Option(result)
+    /*val updateFunc = (currentVal: Seq[(Int,Int)], prevVal: Option[(Int,Int)]) =>{
+        val prev = prevVal.getOrElse(0,0)
+        var count = 0
+        var value = 0
+        currentVal.foreach(t =>{
+          count = prev._1 + t._1
+          value = prev._2 + t._2
         })
-    }*/
-    val pairDstream = distinctDStream.map(map => (map.get("agreeId").get + "," + map.get("ts").get , map)) //pairDstreamFunction
-    val result =
-      pairDstream.update
+        Some(count,value)
+    }
+    val pairDstream = distinctDStream.map(map => (map.get("agreeId").get + "," + map.get("ts").get, (map.get("count").get.toString.toInt, map.get("value").get.toString.toInt))) //pairDstreamFunction
+    val result = pairDstream.updateStateByKey(updateFunc)
+    result.print()*/
 
 
     //updateStateByKey 所有批次的累加值 加上 window 函数试试？？？
@@ -70,6 +66,66 @@ object StreamingKafka02 {
     val countPairDstream = distinctDStream.map(v =>(v.get("agreeId").get.toString,v.get("count").get.toString.toInt))
     val countResult = countPairDstream.updateStateByKey(counts)
     countResult.print()*/
+
+    //cogroup
+    /*val countPairDstream = distinctDStream.map(v =>(v.get("ts").get.toString,v.get("count").get.toString.toInt))
+    val double = countPairDstream.cogroup(countPairDstream)
+    double.print()*/
+
+    /**
+      * fullOuterJoin 笛卡尔积 展示的方式 tuple(this),tuple(other)
+      * (2017-04-07 17:49,(Some(3),Some(3)))
+      * (2017-04-07 17:49,(Some(3),Some(5)))
+      * (2017-04-07 17:49,(Some(5),Some(3)))
+      * (2017-04-07 17:49,(Some(5),Some(5)))
+      */
+   /* val countPairDstream = distinctDStream.map(v =>(v.get("ts").get.toString,v.get("count").get.toString.toInt))
+    val fullJoin = countPairDstream.fullOuterJoin(countPairDstream)
+    fullJoin.print()*/
+
+    /**
+      * join 笛卡尔积 展示的方式 tuple(this,other)
+      * (2017-04-07 17:58,(5,5))
+      * (2017-04-07 17:58,(5,3))
+      * (2017-04-07 17:58,(3,5))
+      * (2017-04-07 17:58,(3,3))
+      */
+    /*val countPairDstream = distinctDStream.map(v =>(v.get("ts").get.toString,v.get("count").get.toString.toInt))
+    val join = countPairDstream.join(countPairDstream)
+    join.print()*/
+
+
+    /**
+      * leftOuterJoin 返回 tuple(this,tuple(other))
+      * (2017-04-07 18:10,(4,Some(Map(count -> 5, ts -> 2017-04-07 18:10, agreeId -> 5, id -> 0, value -> 10))))
+      */
+    /*val otherDStream = ds_value.filter(msg => msg.get("count").get.toInt>2).map(kv =>{
+      val map = Map(
+        "id" -> kv.get("id").get,
+        "ts" -> kv.get("ts").get.substring(0,16),
+        "count" -> kv.get("count").get.toInt,
+        "value" -> kv.get("value").get.toInt,
+        "agreeId" -> kv.get("agreeId").get)
+      map
+    })
+    val countPairDstream = distinctDStream.map(v =>(v.get("ts").get.toString,v.get("count").get.toString.toInt))
+    val otherCountPairDstream = otherDStream.map(v =>(v.get("ts").get.toString,v))
+    val leftOutJoin = countPairDstream.leftOuterJoin(otherCountPairDstream)
+    leftOutJoin.print()*/
+
+
+    /**
+      * groupByKey  (key,arrayBuffer())
+      * (2017-04-07 18:15,ArrayBuffer(2, 4, 1))
+      */
+   /* val countPairDstream = distinctDStream.map(v =>(v.get("ts").get.toString,v.get("count").get.toString.toInt))
+    val groupByKey = countPairDstream.groupByKey()
+    groupByKey.print()*/
+
+
+    val countPairDstream = distinctDStream.map(v =>(v.get("ts").get.toString,v.get("count").get.toString.toInt))
+    countPairDstream.reduceByKey()
+
 
     ssc.start()
     ssc.awaitTermination()
