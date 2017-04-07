@@ -40,6 +40,9 @@ object SparkContextUtils {
 
     val array = arrayRdd.collect()
 
+    val pairRDD = arrayRdd.map(v=>(v,v+10))
+    //pairRDD.rightOuterJoin()
+
     println("max="+max)
     println("min="+min)
     println("first="+first)
