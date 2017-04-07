@@ -123,8 +123,13 @@ object StreamingKafka02 {
     groupByKey.print()*/
 
 
+   /**
+     * reduceByKey
+     * (2017-04-07 18:28,11)
+    */
     val countPairDstream = distinctDStream.map(v =>(v.get("ts").get.toString,v.get("count").get.toString.toInt))
-    countPairDstream.reduceByKey()
+    val reduceByKey = countPairDstream.reduceByKey((a,b)=>a+b)
+    reduceByKey.print()
 
 
     ssc.start()
