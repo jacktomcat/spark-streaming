@@ -178,6 +178,10 @@ object StreamingKafka {
       })
     })*/
 
+    val filter_value = ds_value.filter(msg=> {
+      msg.get("count").get.toInt>2
+    })
+
     ssc.start()
     ssc.awaitTermination()
   }
