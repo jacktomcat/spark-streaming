@@ -1,5 +1,6 @@
 package com.gochinatv.spark.streaming
 
+import com.gochinatv.spark.utils.MySqlConnection
 import kafka.serializer.StringDecoder
 import org.apache.spark.rdd.RDD
 import org.apache.spark.{SparkConf, SparkContext}
@@ -35,7 +36,7 @@ object StreamingKafka {
     val sqlContext = new SQLContext(ssc.sparkContext)
 
     //消息格式 (key237,{"id":"236","ts":"2017-03-24 17:34:29","count":"9","value":"39","agreeId":"323"})
-    val inputStream = KafkaUtils.createStream(ssc,"localhost:2181", topic_group, Map[String, Int](topic -> 1))
+    val inputStream = KafkaUtils.createStream(ssc,"192.168.2.150:2181", topic_group, Map[String, Int](topic -> 1))
     val ds_value = inputStream.map(_._2).map(JSON.parseFull(_)).map(_.get.asInstanceOf[scala.collection.immutable.Map[String, String]])
     val msg_data =
       ds_value.map(msg=>Message(
@@ -49,14 +50,45 @@ object StreamingKafka {
     import sqlContext.implicits._
 
     // 重新查询在前，window函数在后，这样不会把之前的记录累加上去 transform
-    /*val transformRdd = msg_data.transform(rdd=>
+    val transformRdd = msg_data.transform(rdd=>
       {
         rdd.toDF().registerTempTable("click_data")
-        val df = sqlContext.sql("select agreeId,ts,sum(count),sum(value) from click_data group by agreeId,ts")
+        val df = sqlContext.sql("select agreeId,ts,sum(count) as count,sum(value) as value from click_data group by agreeId,ts")
         df.rdd
       })
-    val result = transformRdd.window(Seconds(60),Seconds(30))
-    result.print()*/
+
+    import collection.JavaConverters._
+
+    transformRdd.foreachRDD(rdd => {
+      rdd.foreachPartition(row => {
+        var batchData = scala.collection.mutable.ListBuffer[String]()
+           row.foreach(record =>{
+              val agreeId = record.getAs[String]("agreeId")
+              val ts = record.getAs[String]("ts")
+              val count = record.getAs[Long]("count")
+              val value = record.getAs[Long]("value")
+              val data = agreeId + "," + ts + "," + count + "," + value ;
+              batchData+=data
+           })
+         MySqlConnection.batchInsert(batchData.asJava)
+      })
+    })
+
+    /*
+      val result = transformRdd.window(Seconds(30),Seconds(20))
+      result.foreachRDD(rdd => {
+        rdd.foreachPartition(row => {
+          row.foreach(record =>{
+            val agreeId = record.getAs[String]("agreeId")
+            val ts = record.getAs[String]("ts")
+            val count = record.getAs[Long]("count")
+            val value = record.getAs[Long]("value")
+            val data = agreeId + "," + ts + "," + count + "," + value ;
+            println(data)
+          })
+        })
+      })
+     */
 
     // window函数在前，重新查询在后，这样不会把之前的记录累加上去
    /* val transformRdd = msg_data.window(Seconds(60),Seconds(30)).transform(
