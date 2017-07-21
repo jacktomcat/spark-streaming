@@ -9,6 +9,7 @@ import scala.util.parsing.json.JSON
 
 /**
   * Created by tingyun on 2017/4/6.
+  *
   */
 object StreamingKafka02 {
 
@@ -18,12 +19,12 @@ object StreamingKafka02 {
     val topic_group = "streaming-g01"
     val sparkConf = new SparkConf().setAppName("StreamingKafka02").setMaster("local[*]")
     val ssc = new StreamingContext(sparkConf, Seconds(10))
-    //ssc.checkpoint("E:\\checkpoint")
+    ssc.checkpoint("hdfs://192.168.2.150:9000/zhuhh/kafka/checkpoint")
 
     val sqlContext = new SQLContext(ssc.sparkContext)
 
     //消息格式 (key237,{"id":"236","ts":"2017-03-24 17:34:29","count":"9","value":"39","agreeId":"323"})
-    val inputStream = KafkaUtils.createStream(ssc,"localhost:2181", topic_group, Map[String, Int](topic -> 1))
+    val inputStream = KafkaUtils.createStream(ssc,"192.168.2.150:2181", topic_group, Map[String, Int](topic -> 1))
     val ds_value = inputStream.map(_._2).map(JSON.parseFull(_)).map(_.get.asInstanceOf[scala.collection.immutable.Map[String, String]])
 
     val distinctDStream = ds_value.filter(msg => msg.get("count").get.toInt>0).map(kv =>{
@@ -44,7 +45,8 @@ object StreamingKafka02 {
       Map(count -> 4, ts -> 2017-03-30 17:21, agreeId -> 2, id -> 100, value -> 4)*/
     })
 
-    /*val updateFunc = (currentVal: Seq[(Int,Int)], prevVal: Option[(Int,Int)]) =>{
+    //需要checkpoint支持
+    val updateFunc = (currentVal: Seq[(Int,Int)], prevVal: Option[(Int,Int)]) =>{
         val prev = prevVal.getOrElse(0,0)
         var count = 0
         var value = 0
@@ -56,7 +58,7 @@ object StreamingKafka02 {
     }
     val pairDstream = distinctDStream.map(map => (map.get("agreeId").get + "," + map.get("ts").get, (map.get("count").get.toString.toInt, map.get("value").get.toString.toInt))) //pairDstreamFunction
     val result = pairDstream.updateStateByKey(updateFunc)
-    result.print()*/
+    result.print()
 
 
     //updateStateByKey 所有批次的累加值 加上 window 函数试试？？？
@@ -127,9 +129,9 @@ object StreamingKafka02 {
      * reduceByKey
      * (2017-04-07 18:28,11)
     */
-    val countPairDstream = distinctDStream.map(v =>(v.get("ts").get.toString,v.get("count").get.toString.toInt))
+    /*val countPairDstream = distinctDStream.map(v =>(v.get("ts").get.toString,v.get("count").get.toString.toInt))
     val reduceByKey = countPairDstream.reduceByKey((a,b)=>a+b)
-    reduceByKey.print()
+    reduceByKey.print()*/
 
 
     ssc.start()
